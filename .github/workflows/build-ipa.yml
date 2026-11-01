@@ -44,6 +44,12 @@ jobs:
           rm -rf Payload && mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/TrasaGPS.app Payload/
           xattr -cr Payload
+          # Variant úplne bez podpisu (pre nástroje, ktoré chcú čistú binárku)
+          rm -rf unsigned && mkdir -p unsigned/Payload
+          cp -R Payload/TrasaGPS.app unsigned/Payload/
+          codesign --remove-signature unsigned/Payload/TrasaGPS.app/TrasaGPS || true
+          rm -rf unsigned/Payload/TrasaGPS.app/_CodeSignature
+          (cd unsigned && zip -qr ../TrasaGPS-unsigned.ipa Payload)
           # Ad-hoc podpis: TrollStore ho prijme priamo, Sideloadly/AltStore/ESign ho prepíšu vlastným.
           codesign --force --sign - --timestamp=none --generate-entitlement-der Payload/TrasaGPS.app
           zip -qr TrasaGPS.ipa Payload
@@ -66,7 +72,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: TrasaGPS-${{ env.VERSION }}
-          path: TrasaGPS.ipa
+          path: |
+            TrasaGPS.ipa
+            TrasaGPS-unsigned.ipa
           retention-days: 30
 
       - name: Publish GitHub Release
@@ -85,10 +93,13 @@ jobs:
           - **AltStore / SideStore**: *My Apps ▸ +* a vyber .ipa.
           - **TrollStore**: otvor .ipa v TrollStore a ťukni Install.
 
+          **TrasaGPS.ipa** má ad-hoc podpis (funguje s TrollStore aj s podpisovacími nástrojmi).
+          **TrasaGPS-unsigned.ipa** je úplne bez podpisu – skús ho, ak tvoj nástroj s prvým súborom nefunguje.
+
           .ipa sa nedá nainštalovať len ťuknutím na súbor v iPhone, musí sa podpísať jedným z nástrojov vyššie.
           Vyžaduje iOS 17.0 alebo novší.
           NOTES
-          gh release create "v$VERSION" TrasaGPS.ipa \
+          gh release create "v$VERSION" TrasaGPS.ipa TrasaGPS-unsigned.ipa \
             --title "TrasaGPS $VERSION" \
             --notes-file notes.md \
             --target "${{ github.sha }}"
