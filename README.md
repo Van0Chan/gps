@@ -31,6 +31,15 @@ iOS aplikácia (SwiftUI, iOS 17+) na živé GPS, nahrávanie a plánovanie trás
 - Import GPX (track, route aj waypointy). GPX súbor sa dá otvoriť aj priamo z aplikácie Súbory.
 - Export GPX a **export pre Xcode**: časy bodov sú prepočítané podľa rýchlosti, takže súbor sa dá použiť v Debug ▸ Simulate Location
 
+**Poloha celého iPhonu**
+- Mení GPS polohu pre **všetky aplikácie**, nielen v TrasaGPS
+- Presun na ľubovoľné miesto: posunieš zameriavač na mape a ťukneš na „Presunúť iPhone sem“
+- Pri prehrávaní trasy sa poloha celého iPhonu pohybuje spolu so simuláciou
+- Funguje bez počítača cez vývojárske služby iOS (knižnica [idevice](https://github.com/jkcoxson/idevice), MIT licencia)
+- Potrebuješ: zapnutý Režim pre vývojárov, aplikáciu **LocalDevVPN** z App Store a **pairing file** vytvorený raz na počítači
+- Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB)
+- Podrobný návod je priamo v aplikácii: Nastavenia ▸ Poloha celého iPhonu
+
 **Nastavenia**
 - Metrické alebo imperiálne jednotky, typ mapy
 - Predvolená rýchlosť simulácie, opakovanie, tam a späť
@@ -48,6 +57,7 @@ Potrebuješ Mac s Xcode 15 alebo novším.
 
 ```bash
 brew install xcodegen
+./scripts/build-idevice.sh   # zostaví knižnicu idevice (Rust) pre iOS
 xcodegen generate
 open TrasaGPS.xcodeproj
 ```
@@ -58,4 +68,4 @@ Bez XcodeGen: v Xcode vytvor nový projekt *iOS App* (SwiftUI, SwiftData), nahra
 
 ## Poznámka
 
-Aplikácia nemení systémovú polohu iPhonu pre iné aplikácie, to iOS bežnej aplikácii nedovolí. Na simuláciu polohy celého zariadenia počas vývoja použi export pre Xcode.
+Zmena polohy celého iPhonu používa vývojárske služby iOS (rovnaké, aké používa Xcode). Platí, kým je aplikácia spojená s iPhonom, a Apple ju môže v budúcich verziách iOS zmeniť. Simulácia polohy v hrách a službách, ktoré to zakazujú, porušuje ich podmienky.

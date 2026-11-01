@@ -6,6 +6,7 @@ struct TrasaGPSApp: App {
     @State private var appState = AppState()
     @State private var location = LocationManager()
     @State private var simulator = RouteSimulator()
+    @State private var device = DeviceLocationController()
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,16 @@ struct TrasaGPSApp: App {
                 .environment(appState)
                 .environment(location)
                 .environment(simulator)
+                .environment(device)
+                .onAppear {
+                    device.onKeepAliveChange = { [location] enabled in
+                        location.setBackgroundKeepAlive(enabled)
+                    }
+                }
+                // Simulácia trasy sa posiela aj do celého iPhonu (ak je pripojený).
+                .onChange(of: simulator.traveled) {
+                    device.followSimulation(simulator.currentCoordinate)
+                }
         }
         .modelContainer(for: Route.self)
     }

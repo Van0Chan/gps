@@ -80,10 +80,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         recordingStart = .now
         isPaused = false
         isRecording = true
-        manager.allowsBackgroundLocationUpdates = true
-        manager.pausesLocationUpdatesAutomatically = false
-        manager.showsBackgroundLocationIndicator = true
-        start()
+        updateBackgroundMode()
         if let loc = lastLocation, isGood(loc) { append(loc) }
     }
 
@@ -110,8 +107,26 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         pauseStart = nil
         recordedPoints = []
         recordedDistance = 0
-        manager.allowsBackgroundLocationUpdates = false
+        updateBackgroundMode()
         return points
+    }
+
+    // MARK: Beh na pozadí
+
+    /// Udržiava aplikáciu na pozadí (napr. počas simulácie polohy celého iPhonu).
+    @ObservationIgnored private var backgroundKeepAlive = false
+
+    func setBackgroundKeepAlive(_ enabled: Bool) {
+        backgroundKeepAlive = enabled
+        updateBackgroundMode()
+    }
+
+    private func updateBackgroundMode() {
+        let needed = isRecording || backgroundKeepAlive
+        manager.allowsBackgroundLocationUpdates = needed
+        manager.pausesLocationUpdatesAutomatically = !needed
+        manager.showsBackgroundLocationIndicator = needed
+        if needed { start() }
     }
 
     private func isGood(_ loc: CLLocation) -> Bool {

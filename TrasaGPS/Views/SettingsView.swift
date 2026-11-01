@@ -14,6 +14,16 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    NavigationLink {
+                        DeviceSetupView()
+                    } label: {
+                        Label("Poloha celého iPhonu", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                    }
+                } footer: {
+                    Text("Zmena GPS polohy pre všetky aplikácie cez LocalDevVPN a pairing file.")
+                }
+
                 Section("Zobrazenie") {
                     Picker("Jednotky", selection: $unitsRaw) {
                         ForEach(UnitSystem.allCases) { Text($0.title).tag($0.rawValue) }
@@ -71,7 +81,7 @@ struct SettingsView: View {
                 }
 
                 Section("O simulácii polohy") {
-                    Text("Simulácia v aplikácii prehráva trasu na mape. Ak chceš podvrhnúť polohu celému iPhonu pri vývoji, exportuj trasu cez „Exportovať pre simuláciu v Xcode“ a v Xcode ju vyber v Debug ▸ Simulate Location. Časy bodov sú prepočítané podľa zvolenej rýchlosti.")
+                    Text("Simulácia v aplikácii prehráva trasu na mape. Polohu celého iPhonu zmeníš v sekcii „Poloha celého iPhonu“. Trasu môžeš exportovať aj pre Xcode (Debug ▸ Simulate Location) – časy bodov sú prepočítané podľa zvolenej rýchlosti.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

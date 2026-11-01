@@ -4,3 +4,5 @@ DerivedData/
 build/
 .DS_Store
 *.ipa
+Vendor/
+.build/

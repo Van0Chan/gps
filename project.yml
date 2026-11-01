@@ -23,3 +23,8 @@ targets:
         INFOPLIST_FILE: TrasaGPS/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_OBJC_BRIDGING_HEADER: TrasaGPS/Device/Bridging-Header.h
+        HEADER_SEARCH_PATHS: $(SRCROOT)/Vendor/idevice/include
+        LIBRARY_SEARCH_PATHS: $(SRCROOT)/Vendor/idevice/lib
+        OTHER_LDFLAGS: -lidevice_ffi -lresolv -framework Security -framework SystemConfiguration
+        SUPPORTED_PLATFORMS: iphoneos

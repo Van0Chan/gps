@@ -6,6 +6,7 @@ import SwiftData
 struct LiveMapView: View {
     @Environment(LocationManager.self) private var location
     @Environment(RouteSimulator.self) private var simulator
+    @Environment(DeviceLocationController.self) private var device
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
 
@@ -19,6 +20,7 @@ struct LiveMapView: View {
     @State private var routeName = ""
     @State private var copied = false
     @State private var showDetails = true
+    @State private var mapCenter: CLLocationCoordinate2D?
 
     private var units: UnitSystem { UnitSystem(rawValue: unitsRaw) ?? .metric }
     private var style: MapStyleOption { MapStyleOption(rawValue: mapStyleRaw) ?? .standard }
@@ -43,6 +45,11 @@ struct LiveMapView: View {
                 }
             }
 
+            if let spoofed = device.spoofedCoordinate, !simulator.isActive {
+                Marker("iPhone", systemImage: "iphone", coordinate: spoofed)
+                    .tint(.purple)
+            }
+
             if simulator.isActive, let current = simulator.currentCoordinate {
                 Annotation("Simulácia", coordinate: current) {
                     SimulatedMarker(heading: simulator.heading)
@@ -56,6 +63,15 @@ struct LiveMapView: View {
             MapCompass()
             MapPitchToggle()
             MapScaleView()
+        }
+        .onMapCameraChange { ctx in mapCenter = ctx.region.center }
+        .overlay {
+            if device.isConnected, !simulator.isActive {
+                Image(systemName: "plus")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(.purple)
+                    .allowsHitTesting(false)
+            }
         }
         .overlay(alignment: .top) { topBar }
         .safeAreaInset(edge: .bottom) { bottomPanel }
@@ -105,6 +121,13 @@ struct LiveMapView: View {
                         .background(.regularMaterial, in: Circle())
                 }
                 Spacer()
+                if device.spoofedCoordinate != nil {
+                    Label("iPhone: simulovaná poloha", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                        .font(.caption.bold())
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color.purple, in: Capsule())
+                        .foregroundStyle(.white)
+                }
                 if location.isRecording {
                     Label(location.isPaused ? "Pauza" : "Nahrávam", systemImage: location.isPaused ? "pause.circle.fill" : "record.circle")
                         .font(.caption.bold())
@@ -163,6 +186,8 @@ struct LiveMapView: View {
                 }
             }
 
+            devicePanel
+
             if location.isRecording {
                 HStack {
                     TimelineView(.periodic(from: .now, by: 1)) { ctx in
@@ -208,6 +233,54 @@ struct LiveMapView: View {
                     .buttonStyle(.bordered)
                 }
                 .controlSize(.large)
+            }
+        }
+    }
+
+    /// Ovládanie polohy celého iPhonu.
+    @ViewBuilder
+    private var devicePanel: some View {
+        if device.isConnected {
+            HStack {
+                Button {
+                    if let c = mapCenter { Task { await device.teleport(to: c) } }
+                } label: {
+                    Label("Presunúť iPhone sem", systemImage: "scope").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+                .disabled(mapCenter == nil)
+
+                Button {
+                    Task { await device.restoreRealLocation() }
+                } label: {
+                    Image(systemName: "location.slash")
+                }
+                .buttonStyle(.bordered)
+                .disabled(device.spoofedCoordinate == nil)
+                .accessibilityLabel("Skutočná poloha")
+            }
+            .controlSize(.large)
+        } else if case .working(let text) = device.status {
+            HStack {
+                ProgressView()
+                Text(text).font(.footnote)
+                Spacer()
+            }
+        } else if device.hasPairingFile {
+            Button {
+                Task { await device.connect() }
+            } label: {
+                Label("Pripojiť iPhone na zmenu polohy", systemImage: "antenna.radiowaves.left.and.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.purple)
+            if case .failed(let message) = device.status {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(3)
             }
         }
     }
