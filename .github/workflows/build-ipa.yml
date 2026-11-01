@@ -2,13 +2,18 @@ name: Build IPA
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      VERSION: 1.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,20 +32,63 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build
 
-      - name: Package IPA
+      - name: Package IPA (ad-hoc signed)
         run: |
-          mkdir -p Payload
+          rm -rf Payload && mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/TrasaGPS.app Payload/
-          zip -qry TrasaGPS-unsigned.ipa Payload
-          ls -lh TrasaGPS-unsigned.ipa
+          xattr -cr Payload
+          # Ad-hoc podpis: TrollStore ho prijme priamo, Sideloadly/AltStore/ESign ho prepíšu vlastným.
+          codesign --force --sign - --timestamp=none --generate-entitlement-der Payload/TrasaGPS.app
+          zip -qr TrasaGPS.ipa Payload
+          ls -lh TrasaGPS.ipa
+
+      - name: Verify IPA
+        run: |
+          echo "== Obsah IPA =="
+          unzip -l TrasaGPS.ipa | head -40
+          echo "== Info.plist =="
+          plutil -p Payload/TrasaGPS.app/Info.plist
+          echo "== Architektúra =="
+          lipo -info Payload/TrasaGPS.app/TrasaGPS
+          echo "== Minimálna verzia iOS =="
+          otool -l Payload/TrasaGPS.app/TrasaGPS | grep -A4 LC_BUILD_VERSION
+          echo "== Podpis =="
+          codesign -dv Payload/TrasaGPS.app 2>&1
+          codesign --verify --verbose Payload/TrasaGPS.app
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TrasaGPS-ipa
-          path: TrasaGPS-unsigned.ipa
+          name: TrasaGPS-${{ env.VERSION }}
+          path: TrasaGPS.ipa
           retention-days: 30
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Inštalácia
+
+          Stiahni **TrasaGPS.ipa** nižšie a nainštaluj ho jedným z týchto spôsobov:
+
+          - **Sideloadly** (Windows/Mac): pripoj iPhone káblom, pretiahni .ipa do Sideloadly, zadaj svoje Apple ID a klikni Start.
+            Potom v iPhone: *Nastavenia ▸ Všeobecné ▸ VPN a správa zariadenia* ▸ dôveruj svojmu Apple ID.
+            Na iOS 16+ zapni aj *Nastavenia ▸ Súkromie a bezpečnosť ▸ Režim pre vývojárov*.
+          - **AltStore / SideStore**: *My Apps ▸ +* a vyber .ipa.
+          - **TrollStore**: otvor .ipa v TrollStore a ťukni Install.
+
+          .ipa sa nedá nainštalovať len ťuknutím na súbor v iPhone, musí sa podpísať jedným z nástrojov vyššie.
+          Vyžaduje iOS 17.0 alebo novší.
+          NOTES
+          gh release create "v$VERSION" TrasaGPS.ipa \
+            --title "TrasaGPS $VERSION" \
+            --notes-file notes.md \
+            --target "${{ github.sha }}"

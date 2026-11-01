@@ -36,7 +36,13 @@ iOS aplikácia (SwiftUI, iOS 17+) na živé GPS, nahrávanie a plánovanie trás
 - Predvolená rýchlosť simulácie, opakovanie, tam a späť
 - Filter presnosti GPS a minimálna vzdialenosť medzi bodmi pri nahrávaní
 
-## Spustenie
+## Inštalácia (.ipa)
+
+Hotový `.ipa` súbor nájdeš v sekcii **Releases** (https://github.com/Van0Chan/gps/releases). Nový release sa vytvorí automaticky pri každom pushi do vetvy `main`.
+
+Nainštaluješ ho cez **Sideloadly**, **AltStore/SideStore** alebo **TrollStore**. Samotné ťuknutie na .ipa v iPhone nefunguje. Po inštalácii cez Sideloadly treba v *Nastavenia ▸ Všeobecné ▸ VPN a správa zariadenia* dôverovať svojmu Apple ID a zapnúť *Režim pre vývojárov*. Aplikácia vyžaduje iOS 17 alebo novší.
+
+## Spustenie zo zdrojákov
 
 Potrebuješ Mac s Xcode 15 alebo novším.
 
