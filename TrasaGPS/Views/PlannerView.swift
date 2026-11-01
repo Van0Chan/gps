@@ -139,42 +139,48 @@ struct PlannerView: View {
             }
 
             HStack(spacing: 8) {
-                Button { _ = waypoints.popLast() } label: { Image(systemName: "arrow.uturn.backward") }
-                    .accessibilityLabel("Späť")
-                    .disabled(waypoints.isEmpty)
-                Button { waypoints.reverse() } label: { Image(systemName: "arrow.left.arrow.right") }
-                    .accessibilityLabel("Obrátiť smer")
-                    .disabled(waypoints.count < 2)
-                Button {
+                toolButton("arrow.uturn.backward", "Späť", disabled: waypoints.isEmpty) {
+                    _ = waypoints.popLast()
+                }
+                toolButton("arrow.left.arrow.right", "Obrátiť smer", disabled: waypoints.count < 2) {
+                    waypoints.reverse()
+                }
+                toolButton("arrow.triangle.capsulepath", "Uzavrieť okruh", disabled: waypoints.count < 2) {
                     if let first = waypoints.first { waypoints.append(first) }
-                } label: { Image(systemName: "arrow.triangle.capsulepath") }
-                    .accessibilityLabel("Uzavrieť okruh")
-                    .disabled(waypoints.count < 2)
-                Button(role: .destructive) { waypoints.removeAll() } label: { Image(systemName: "trash") }
-                    .accessibilityLabel("Vymazať body")
-                    .disabled(waypoints.isEmpty)
-
-                Spacer()
-
-                Button {
+                }
+                toolButton("trash", "Vymazať body", disabled: waypoints.isEmpty, role: .destructive) {
+                    waypoints.removeAll()
+                }
+                toolButton("square.and.arrow.down", "Uložiť", disabled: path.count < 2) {
                     routeName = "Plán " + Date.now.formatted(date: .abbreviated, time: .shortened)
                     showSaveAlert = true
-                } label: { Image(systemName: "square.and.arrow.down") }
-                    .accessibilityLabel("Uložiť")
-                    .disabled(path.count < 2)
-
-                Button {
-                    SimulationLauncher.start(points: path.map { TrackPoint($0) }, name: "Naplánovaná trasa",
-                                             simulator: simulator, appState: appState)
-                } label: {
-                    Label("Simulovať", systemImage: "play.fill")
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(path.count < 2 || isRouting)
             }
-            .buttonStyle(.bordered)
+
+            Button {
+                SimulationLauncher.start(points: path.map { TrackPoint($0) }, name: "Naplánovaná trasa",
+                                         simulator: simulator, appState: appState)
+            } label: {
+                Label("Simulovať trasu", systemImage: "play.fill")
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .disabled(path.count < 2 || isRouting)
         }
+    }
+
+    private func toolButton(_ systemImage: String, _ title: String, disabled: Bool,
+                            role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        Button(role: role, action: action) {
+            Image(systemName: systemImage)
+                .frame(maxWidth: .infinity, minHeight: 22)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .disabled(disabled)
+        .accessibilityLabel(title)
     }
 
     // MARK: Akcie

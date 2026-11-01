@@ -56,6 +56,8 @@ struct StatTile: View {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title)
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .font(.caption2)
             .foregroundStyle(.secondary)
             Text(value)
