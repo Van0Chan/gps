@@ -29,7 +29,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Poloha sa používa na nahrávanie trasy aj vtedy, keď je aplikácia na pozadí.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Pripojenie k vývojárskym službám tvojho iPhonu cez LocalDevVPN, aby sa dala zmeniť poloha celého zariadenia.</string>
+	<string>Pripojenie k vývojárskym službám tvojho iPhonu (cez lokálnu VPN), aby sa dala zmeniť poloha celého zariadenia. Žiadne dáta neopúšťajú iPhone.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_remotepairing._tcp</string>

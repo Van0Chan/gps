@@ -76,6 +76,8 @@ struct LiveMapView: View {
         .overlay(alignment: .top) { topBar }
         .safeAreaInset(edge: .bottom) { bottomPanel }
         .onAppear { location.requestPermission() }
+        .sensoryFeedback(.impact(weight: .medium), trigger: location.isRecording)
+        .sensoryFeedback(.success, trigger: device.spoofedCoordinate?.latitude) { _, new in new != nil }
         .onChange(of: simulator.traveled) {
             guard followSimulation, simulator.state == .running, let c = simulator.currentCoordinate else { return }
             position = .camera(MapCamera(centerCoordinate: c, distance: 900))

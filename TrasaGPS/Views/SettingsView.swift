@@ -21,7 +21,7 @@ struct SettingsView: View {
                         Label("Poloha celého iPhonu", systemImage: "iphone.gen3.radiowaves.left.and.right")
                     }
                 } footer: {
-                    Text("Zmena GPS polohy pre všetky aplikácie cez LocalDevVPN a pairing file.")
+                    Text("Zmena GPS polohy pre všetky aplikácie – vstavaná VPN a pairing file.")
                 }
 
                 Section("Zobrazenie") {

@@ -122,8 +122,14 @@ final class RouteSimulator {
     }
 
     func restart() {
+        if isReversed {
+            // Pri režime tam a späť vrátime trasu do pôvodného smeru.
+            coordinates.reverse()
+            let total = totalDistance
+            cumulative = cumulative.reversed().map { total - $0 }
+            isReversed = false
+        }
         traveled = 0
-        isReversed = false
         updatePosition()
         if state == .finished { state = .paused }
     }

@@ -178,10 +178,27 @@ private final class GPXParserDelegate: NSObject, XMLParserDelegate {
     }
 }
 
-/// Súbor GPX na zdieľanie cez ShareLink.
+/// Súbor GPX na zdieľanie cez ShareLink. Obsah sa vygeneruje až pri zdieľaní.
 struct GPXDocument: Transferable {
-    let fileName: String
-    let content: String
+    enum Kind { case track, xcode(speed: Double) }
+
+    let name: String
+    let points: [TrackPoint]
+    let kind: Kind
+
+    var fileName: String {
+        switch kind {
+        case .track: return GPX.fileName(for: name)
+        case .xcode: return GPX.fileName(for: name, suffix: "-xcode")
+        }
+    }
+
+    var content: String {
+        switch kind {
+        case .track: return GPX.track(name: name, points: points)
+        case .xcode(let speed): return GPX.xcodeSimulation(name: name, points: points, speed: speed)
+        }
+    }
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .gpx) { doc in

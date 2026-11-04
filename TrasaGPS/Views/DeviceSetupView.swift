@@ -59,6 +59,12 @@ struct DeviceSetupView: View {
                         .foregroundStyle(.green)
                     Button("Nahradiť pairing file") { showImporter = true }
                     Button("Vymazať pairing file", role: .destructive) { confirmDelete = true }
+                        .confirmationDialog("Vymazať pairing file?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                            Button("Vymazať", role: .destructive) { device.deletePairingFile() }
+                            Button("Zrušiť", role: .cancel) {}
+                        } message: {
+                            Text("Na zmenu polohy ho potom budeš musieť importovať znova.")
+                        }
                 } else {
                     Button {
                         showImporter = true
@@ -91,7 +97,7 @@ struct DeviceSetupView: View {
                 }
                 HStack {
                     TextField("Vlastná IP adresa", text: $customIP)
-                        .keyboardType(.decimalPad)
+                        .keyboardType(.numbersAndPunctuation)
                         .autocorrectionDisabled()
                     Button("Použiť") {
                         let ip = customIP.trimmingCharacters(in: .whitespaces)
@@ -130,6 +136,9 @@ struct DeviceSetupView: View {
             }
         }
         .navigationTitle("Poloha celého iPhonu")
+        .scrollDismissesKeyboard(.immediately)
+        .sensoryFeedback(.success, trigger: device.isConnected) { _, new in new }
+        .sensoryFeedback(.success, trigger: importSuccess) { _, new in new }
         .sheet(isPresented: $showImporter) {
             DocumentPicker(onPick: { url in
                 showImporter = false
@@ -149,15 +158,12 @@ struct DeviceSetupView: View {
         .alert("Pairing file importovaný", isPresented: $importSuccess) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Teraz zapni LocalDevVPN a ťukni na Pripojiť.")
+            Text(builtInVPN ? "Teraz ťukni na Pripojiť." : "Teraz zapni LocalDevVPN a ťukni na Pripojiť.")
         }
         .alert("Import zlyhal", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(importError ?? "")
-        }
-        .confirmationDialog("Vymazať pairing file?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Vymazať", role: .destructive) { device.deletePairingFile() }
         }
     }
 
@@ -165,25 +171,43 @@ struct DeviceSetupView: View {
     private var statusRow: some View {
         switch device.status {
         case .idle:
-            Label("Nepripojené", systemImage: "circle")
-                .foregroundStyle(.secondary)
+            statusHeader("Nepripojené", detail: device.hasPairingFile ? "Pripravené na pripojenie" : "Chýba pairing file",
+                         icon: "iphone.slash", color: .gray)
         case .working(let text):
-            HStack {
+            HStack(spacing: 14) {
                 ProgressView()
+                    .frame(width: 40, height: 40)
                 Text(text)
+                    .font(.subheadline)
             }
         case .connected:
-            Label("Pripojené – poloha iPhonu sa dá meniť", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            statusHeader("Pripojené", detail: "Poloha iPhonu sa dá meniť", icon: "iphone.gen3.radiowaves.left.and.right", color: .green)
         case .failed(let message):
-            VStack(alignment: .leading, spacing: 4) {
-                Label("Chyba", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 8) {
+                statusHeader("Chyba pripojenia", detail: nil, icon: "exclamationmark.triangle.fill", color: .red)
                 Text(message)
                     .font(.footnote)
+                    .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             }
         }
+    }
+
+    private func statusHeader(_ title: String, detail: String?, icon: String, color: Color) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(color.gradient, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline)
+                if let detail {
+                    Text(detail).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     private func step(_ number: Int, _ text: LocalizedStringKey) -> some View {

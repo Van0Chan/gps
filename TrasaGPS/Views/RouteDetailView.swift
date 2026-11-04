@@ -16,6 +16,8 @@ struct RouteDetailView: View {
 
     @State private var points: [TrackPoint] = []
     @State private var confirmDelete = false
+    @State private var reversedCreated = 0
+    @State private var showReversedToast = false
 
     private var units: UnitSystem { UnitSystem(rawValue: unitsRaw) ?? .metric }
 
@@ -112,23 +114,26 @@ struct RouteDetailView: View {
                     let reversed = Route(name: route.name + " (spiatočná)", kind: route.kind, points: Array(points.reversed()))
                     context.insert(reversed)
                     try? context.save()
+                    reversedCreated += 1
+                    withAnimation { showReversedToast = true }
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.8))
+                        withAnimation { showReversedToast = false }
+                    }
                 } label: {
                     Label("Vytvoriť spiatočnú trasu", systemImage: "arrow.uturn.left")
                 }
                 .disabled(points.count < 2)
 
                 ShareLink(
-                    item: GPXDocument(fileName: GPX.fileName(for: route.name), content: GPX.track(name: route.name, points: points)),
+                    item: GPXDocument(name: route.name, points: points, kind: .track),
                     preview: SharePreview(route.name + ".gpx")
                 ) {
                     Label("Exportovať GPX", systemImage: "square.and.arrow.up")
                 }
 
                 ShareLink(
-                    item: GPXDocument(
-                        fileName: GPX.fileName(for: route.name, suffix: "-xcode"),
-                        content: GPX.xcodeSimulation(name: route.name, points: points, speed: simSpeedKmh / 3.6)
-                    ),
+                    item: GPXDocument(name: route.name, points: points, kind: .xcode(speed: simSpeedKmh / 3.6)),
                     preview: SharePreview(route.name + " (Xcode).gpx")
                 ) {
                     Label("Exportovať pre simuláciu v Xcode", systemImage: "hammer")
@@ -137,16 +142,28 @@ struct RouteDetailView: View {
 
             Section {
                 Button("Zmazať trasu", role: .destructive) { confirmDelete = true }
+                    .confirmationDialog("Naozaj zmazať trasu?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                        Button("Zmazať", role: .destructive) {
+                            context.delete(route)
+                            try? context.save()
+                            dismiss()
+                        }
+                        Button("Zrušiť", role: .cancel) {}
+                    }
             }
         }
         .navigationTitle(route.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { points = route.points }
-        .confirmationDialog("Naozaj zmazať trasu?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Zmazať", role: .destructive) {
-                context.delete(route)
-                try? context.save()
-                dismiss()
+        .sensoryFeedback(.success, trigger: reversedCreated)
+        .overlay(alignment: .top) {
+            if showReversedToast {
+                Label("Spiatočná trasa vytvorená", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .glassBackground(in: Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
     }

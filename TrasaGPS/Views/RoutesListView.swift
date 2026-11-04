@@ -98,10 +98,16 @@ private struct RouteRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: route.kind.systemImage)
-                .font(.title3)
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 32)
+            RouteThumbnail(points: route.points)
+                .frame(width: 52, height: 52)
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: route.kind.systemImage)
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(4)
+                        .background(Color.accentColor, in: Circle())
+                        .offset(x: 4, y: 4)
+                }
             VStack(alignment: .leading, spacing: 2) {
                 Text(route.name).font(.headline).lineLimit(1)
                 Text("\(route.kind.title) · \(route.createdAt.formatted(date: .abbreviated, time: .shortened))")
@@ -113,5 +119,48 @@ private struct RouteRow: View {
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// Malý náhľad tvaru trasy pre zoznam.
+struct RouteThumbnail: View {
+    let points: [TrackPoint]
+
+    var body: some View {
+        Canvas { context, size in
+            let coords = Self.sampled(points)
+            guard coords.count > 1,
+                  let minLat = coords.map(\.latitude).min(), let maxLat = coords.map(\.latitude).max(),
+                  let minLon = coords.map(\.longitude).min(), let maxLon = coords.map(\.longitude).max()
+            else { return }
+            let inset: CGFloat = 8
+            let w = size.width - inset * 2, h = size.height - inset * 2
+            // Zachováme pomer strán (približne korigovaný na zemepisnú šírku).
+            let lonScale = cos(((minLat + maxLat) / 2) * .pi / 180)
+            let spanX = max((maxLon - minLon) * lonScale, 1e-9)
+            let spanY = max(maxLat - minLat, 1e-9)
+            let scale = min(w / spanX, h / spanY)
+            let offX = inset + (w - spanX * scale) / 2
+            let offY = inset + (h - spanY * scale) / 2
+            func point(_ c: TrackPoint) -> CGPoint {
+                CGPoint(x: offX + (c.longitude - minLon) * lonScale * scale,
+                        y: offY + (maxLat - c.latitude) * scale)
+            }
+            var path = Path()
+            path.move(to: point(coords[0]))
+            for c in coords.dropFirst() { path.addLine(to: point(c)) }
+            context.stroke(path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            let start = point(coords[0]), end = point(coords[coords.count - 1])
+            context.fill(Path(ellipseIn: CGRect(x: start.x - 3, y: start.y - 3, width: 6, height: 6)), with: .color(.green))
+            context.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(.red))
+        }
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private static func sampled(_ points: [TrackPoint]) -> [TrackPoint] {
+        let step = max(1, points.count / 120)
+        var result = stride(from: 0, to: points.count, by: step).map { points[$0] }
+        if let last = points.last, result.last != last { result.append(last) }
+        return result
     }
 }

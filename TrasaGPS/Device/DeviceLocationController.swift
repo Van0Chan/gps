@@ -161,7 +161,7 @@ final class DeviceLocationController {
             : [setting]
 
         do {
-            status = .working("Hľadám zariadenie cez LocalDevVPN…")
+            status = .working("Hľadám zariadenie…")
             var found: (ip: String, mounted: Bool, chipID: UInt64)?
             var lastError: Error?
             for ip in candidates {
@@ -194,10 +194,15 @@ final class DeviceLocationController {
             startKeepAlive()
             if let c = spoofedCoordinate { push(c, force: true) }
         } catch {
-            status = .failed(error.localizedDescription)
-            await link.disconnect()
-            stopKeepAlive()
+            await failConnect(error)
         }
+    }
+
+    private func failConnect(_ error: Error) async {
+        status = .failed(error.localizedDescription)
+        await link.disconnect()
+        stopKeepAlive()
+        if BuiltInVPN.isEnabledInSettings { await BuiltInVPN.stop() }
     }
 
     private func connectRemotePairing(pairing: Data, candidates: [String]) async {
@@ -246,9 +251,7 @@ final class DeviceLocationController {
             startKeepAlive()
             if let c = spoofedCoordinate { push(c, force: true) }
         } catch {
-            status = .failed(error.localizedDescription)
-            await link.disconnect()
-            stopKeepAlive()
+            await failConnect(error)
         }
     }
 
