@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(DeviceLocationController.self) private var device
     @AppStorage(SettingsKey.units) private var unitsRaw = UnitSystem.metric.rawValue
     @AppStorage(SettingsKey.mapStyle) private var mapStyleRaw = MapStyleOption.standard.rawValue
     @AppStorage(SettingsKey.simSpeedKmh) private var simSpeedKmh = 5.0
@@ -18,7 +19,19 @@ struct SettingsView: View {
                     NavigationLink {
                         DeviceSetupView()
                     } label: {
-                        Label("Poloha celého iPhonu", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                        HStack {
+                            Label("Poloha celého iPhonu", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                            Spacer()
+                            if device.isConnected {
+                                Text("Pripojené")
+                                    .font(.footnote.bold())
+                                    .foregroundStyle(.green)
+                            } else if !device.hasPairingFile {
+                                Text("Nenastavené")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 } footer: {
                     Text("Zmena GPS polohy pre všetky aplikácie – vstavaná VPN a pairing file.")
