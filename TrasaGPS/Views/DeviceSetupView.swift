@@ -100,9 +100,10 @@ struct DeviceSetupView: View {
             Section("Pripojenie") {
                 Picker("Adresa zariadenia", selection: $ipSetting) {
                     Text("Automaticky").tag(DeviceLocationController.automaticIP)
+                    Text("\(BuiltInVPN.targetAddress) (vstavaná VPN)").tag(BuiltInVPN.targetAddress)
+                    Text("10.7.0.1 (LocalDevVPN)").tag("10.7.0.1")
                     Text("10.7.0.2").tag("10.7.0.2")
-                    Text("10.7.0.1").tag("10.7.0.1")
-                    if ![DeviceLocationController.automaticIP, "10.7.0.2", "10.7.0.1"].contains(ipSetting) {
+                    if ![DeviceLocationController.automaticIP, BuiltInVPN.targetAddress, "10.7.0.2", "10.7.0.1"].contains(ipSetting) {
                         Text(ipSetting).tag(ipSetting)
                     }
                 }

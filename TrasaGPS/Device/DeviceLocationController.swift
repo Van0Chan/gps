@@ -188,13 +188,15 @@ final class DeviceLocationController {
         }
 
         if Self.pairingKind(of: pairing) == .remotePairing {
-            let candidates = setting == Self.automaticIP ? ["10.7.0.1", "10.7.0.2"] : [setting]
+            let candidates = setting == Self.automaticIP
+                ? (BuiltInVPN.isEnabledInSettings ? [BuiltInVPN.targetAddress] : ["10.7.0.1", "10.7.0.2"])
+                : [setting]
             await connectRemotePairing(pairing: pairing, candidates: candidates)
             return
         }
 
         let candidates = setting == Self.automaticIP
-            ? (BuiltInVPN.isEnabledInSettings ? ["10.7.0.1", "10.7.0.2"] : ["10.7.0.2", "10.7.0.1"])
+            ? (BuiltInVPN.isEnabledInSettings ? [BuiltInVPN.targetAddress] : ["10.7.0.2", "10.7.0.1"])
             : [setting]
 
         do {
@@ -283,6 +285,7 @@ final class DeviceLocationController {
                     Tunel cez RemotePairing sa nepodarilo vytvoriť.
                     Port: \(port) (\(portSource)), \(vpn).
                     \(attempts.joined(separator: "\n"))
+                    Rozhrania: \(NetworkInfo.ipv4Summary())
                     """)
             }
 

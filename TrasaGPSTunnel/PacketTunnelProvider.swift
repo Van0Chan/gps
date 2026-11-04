@@ -1,14 +1,18 @@
 import NetworkExtension
 
-/// Lokálna VPN: pakety pre 10.7.0.1 „odrazí“ späť do vlastného iPhonu
+/// Lokálna VPN: pakety pre 192.0.2.1 „odrazí“ späť do vlastného iPhonu
 /// (prehodí zdrojovú a cieľovú IP adresu). Vďaka tomu sa aplikácia môže
 /// pripojiť k vývojárskym službám vlastného zariadenia. Žiadne dáta neopúšťajú iPhone.
 final class PacketTunnelProvider: NEPacketTunnelProvider {
-    static let deviceAddress = "10.7.0.2"
-    static let targetAddress = "10.7.0.1"
+    // Rozsah 192.0.2.0/24 (TEST-NET-1) sa v skutočných sieťach nepoužíva.
+    // Mobilní operátori často dávajú telefónu adresu z 10.x.x.x, s ktorou by sa
+    // pôvodné 10.7.0.x pobilo – vtedy by spojenie na mobilných dátach nefungovalo.
+    // Musí sedieť s BuiltInVPN.targetAddress v aplikácii.
+    static let deviceAddress = "192.0.2.2"
+    static let targetAddress = "192.0.2.1"
     /// Adresa „servera“ VPN. iOS smeruje premávku na ňu mimo tunela,
-    /// preto to nesmie byť cieľová adresa 10.7.0.1 – použijeme nepoužívanú adresu.
-    static let dummyServerAddress = "10.7.0.254"
+    /// preto to nesmie byť cieľová adresa – použijeme nepoužívanú adresu.
+    static let dummyServerAddress = "192.0.2.254"
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: Self.dummyServerAddress)

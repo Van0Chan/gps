@@ -5,6 +5,8 @@ import NetworkExtension
 @MainActor
 enum BuiltInVPN {
     static let settingKey = "useBuiltInVPN"
+    /// Adresa, na ktorú sa pripájame cez vstavanú VPN (musí sedieť s PacketTunnelProvider).
+    static let targetAddress = "192.0.2.1"
 
     static var isEnabledInSettings: Bool {
         UserDefaults.standard.object(forKey: settingKey) as? Bool ?? true
