@@ -70,7 +70,7 @@ jobs:
             codesign --remove-signature "$appex/$(basename "$appex" .appex)" || true
             rm -rf "$appex/_CodeSignature"
           done
-          (cd unsigned && zip -qr ../TrasaGPS-unsigned.ipa Payload)
+          (cd unsigned && zip -qr ../GeoPilot-unsigned.ipa Payload)
           # Ad-hoc podpis: TrollStore ho prijme priamo, Sideloadly/AltStore/ESign ho prepíšu vlastným.
           for appex in Payload/TrasaGPS.app/PlugIns/*.appex; do
             codesign --force --sign - --timestamp=none --generate-entitlement-der \
@@ -78,13 +78,13 @@ jobs:
           done
           codesign --force --sign - --timestamp=none --generate-entitlement-der \
             --entitlements TrasaGPS/Resources/TrasaGPS.entitlements Payload/TrasaGPS.app
-          zip -qr TrasaGPS.ipa Payload
-          ls -lh TrasaGPS.ipa
+          zip -qr GeoPilot.ipa Payload
+          ls -lh GeoPilot.ipa
 
       - name: Verify IPA
         run: |
           echo "== Obsah IPA =="
-          unzip -l TrasaGPS.ipa | head -40
+          unzip -l GeoPilot.ipa | head -40
           echo "== Info.plist =="
           plutil -p Payload/TrasaGPS.app/Info.plist
           echo "== Architektúra =="
@@ -100,10 +100,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TrasaGPS-${{ env.VERSION }}
+          name: GeoPilot-${{ env.VERSION }}
           path: |
-            TrasaGPS.ipa
-            TrasaGPS-unsigned.ipa
+            GeoPilot.ipa
+            GeoPilot-unsigned.ipa
           retention-days: 30
 
       - name: Publish GitHub Release
@@ -114,7 +114,7 @@ jobs:
           cat > notes.md <<'NOTES'
           ## Inštalácia
 
-          Stiahni **TrasaGPS.ipa** nižšie a nainštaluj ho jedným z týchto spôsobov:
+          Stiahni **GeoPilot.ipa** nižšie a nainštaluj ho jedným z týchto spôsobov:
 
           - **Sideloadly** (Windows/Mac): pripoj iPhone káblom, pretiahni .ipa do Sideloadly, zadaj svoje Apple ID a klikni Start.
             Potom v iPhone: *Nastavenia ▸ Všeobecné ▸ VPN a správa zariadenia* ▸ dôveruj svojmu Apple ID.
@@ -122,13 +122,13 @@ jobs:
           - **AltStore / SideStore**: *My Apps ▸ +* a vyber .ipa.
           - **TrollStore**: otvor .ipa v TrollStore a ťukni Install.
 
-          **TrasaGPS.ipa** má ad-hoc podpis (funguje s TrollStore aj s podpisovacími nástrojmi).
-          **TrasaGPS-unsigned.ipa** je úplne bez podpisu – skús ho, ak tvoj nástroj s prvým súborom nefunguje.
+          **GeoPilot.ipa** má ad-hoc podpis (funguje s TrollStore aj s podpisovacími nástrojmi).
+          **GeoPilot-unsigned.ipa** je úplne bez podpisu – skús ho, ak tvoj nástroj s prvým súborom nefunguje.
 
           .ipa sa nedá nainštalovať len ťuknutím na súbor v iPhone, musí sa podpísať jedným z nástrojov vyššie.
           Vyžaduje iOS 17.0 alebo novší.
           NOTES
-          gh release create "v$VERSION" TrasaGPS.ipa TrasaGPS-unsigned.ipa \
-            --title "TrasaGPS $VERSION" \
+          gh release create "v$VERSION" GeoPilot.ipa GeoPilot-unsigned.ipa \
+            --title "GeoPilot $VERSION" \
             --notes-file notes.md \
             --target "${{ github.sha }}"

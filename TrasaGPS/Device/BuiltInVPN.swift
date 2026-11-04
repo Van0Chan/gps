@@ -38,7 +38,7 @@ enum BuiltInVPN {
         proto.providerBundleIdentifier = bundleID
         proto.serverAddress = "Lokálne (iPhone)"
         manager.protocolConfiguration = proto
-        manager.localizedDescription = "TrasaGPS"
+        manager.localizedDescription = "GeoPilot"
         manager.isEnabled = true
         do {
             try await manager.saveToPreferences()

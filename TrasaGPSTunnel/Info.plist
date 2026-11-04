@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>sk</string>
 	<key>CFBundleDisplayName</key>
-	<string>TrasaGPS VPN</string>
+	<string>GeoPilot VPN</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

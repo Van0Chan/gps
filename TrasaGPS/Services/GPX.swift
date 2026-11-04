@@ -88,7 +88,7 @@ enum GPX {
     private static func header() -> String {
         """
         <?xml version="1.0" encoding="UTF-8"?>
-        <gpx version="1.1" creator="TrasaGPS" xmlns="http://www.topografix.com/GPX/1/1">
+        <gpx version="1.1" creator="GeoPilot" xmlns="http://www.topografix.com/GPX/1/1">
 
         """
     }

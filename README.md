@@ -1,4 +1,6 @@
-# TrasaGPS
+# GeoPilot
+
+> Projekt v Xcode sa interne stále volá `TrasaGPS` (bundle ID `sk.trasagps.app`), aby sa pri aktualizácii zachovali uložené trasy a nastavenia.
 
 iOS aplikácia (SwiftUI, iOS 17+) na živé GPS, nahrávanie a plánovanie trás, štatistiky a simuláciu pohybu po trase.
 
@@ -38,7 +40,7 @@ iOS aplikácia (SwiftUI, iOS 17+) na živé GPS, nahrávanie a plánovanie trás
 - Funguje bez počítača cez vývojárske služby iOS (knižnica [idevice](https://github.com/jkcoxson/idevice), MIT licencia)
 - Potrebuješ: zapnutý Režim pre vývojárov, aplikáciu **LocalDevVPN** z App Store a **pairing file** vytvorený raz na počítači
 - Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB)
-- Podrobný návod je priamo v aplikácii: Nastavenia ▸ Poloha celého iPhonu
+- Podrobný návod je priamo v aplikácii GeoPilot: Nastavenia ▸ Poloha celého iPhonu
 
 **Nastavenia**
 - Metrické alebo imperiálne jednotky, typ mapy

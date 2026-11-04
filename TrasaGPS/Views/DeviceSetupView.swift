@@ -82,7 +82,7 @@ struct DeviceSetupView: View {
                 Toggle("Vstavaná VPN", isOn: $builtInVPN)
             } footer: {
                 Text(builtInVPN
-                     ? "TrasaGPS si zapne vlastnú lokálnu VPN – LocalDevVPN netreba. Pri prvom spustení iOS požiada o povolenie VPN konfigurácie. Žiadne dáta neopúšťajú iPhone."
+                     ? "GeoPilot si zapne vlastnú lokálnu VPN – LocalDevVPN netreba. Pri prvom spustení iOS požiada o povolenie VPN konfigurácie. Žiadne dáta neopúšťajú iPhone."
                      : "Používa sa externá aplikácia LocalDevVPN – musí byť zapnutá.")
             }
 
@@ -120,7 +120,7 @@ struct DeviceSetupView: View {
             Section("Návod") {
                 VStack(alignment: .leading, spacing: 10) {
                     step(1, "Zapni **Režim pre vývojárov**: Nastavenia ▸ Súkromie a bezpečnosť ▸ Režim pre vývojárov (iPhone sa reštartuje).")
-                    step(2, "VPN zapne TrasaGPS sama (prepínač **Vstavaná VPN**). Ak by tvoj certifikát VPN nepovoľoval, vypni prepínač a použi aplikáciu LocalDevVPN z App Store.")
+                    step(2, "VPN zapne GeoPilot sama (prepínač **Vstavaná VPN**). Ak by tvoj certifikát VPN nepovoľoval, vypni prepínač a použi aplikáciu LocalDevVPN z App Store.")
                     step(3, "Získaj **pairing file**: RemotePairing súbor (napr. zo StikDebug, kľúče public_key/private_key) alebo klasický pairing file z počítača (iloader, JitterbugPair). Oba typy fungujú.")
                     step(4, "Tu ťukni na **Importovať pairing file** a vyber ho.")
                     step(5, "Ťukni na **Pripojiť**. Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB).")
