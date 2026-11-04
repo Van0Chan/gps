@@ -6,9 +6,12 @@ import NetworkExtension
 final class PacketTunnelProvider: NEPacketTunnelProvider {
     static let deviceAddress = "10.7.0.2"
     static let targetAddress = "10.7.0.1"
+    /// Adresa „servera“ VPN. iOS smeruje premávku na ňu mimo tunela,
+    /// preto to nesmie byť cieľová adresa 10.7.0.1 – použijeme nepoužívanú adresu.
+    static let dummyServerAddress = "10.7.0.254"
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: Self.targetAddress)
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: Self.dummyServerAddress)
         let ipv4 = NEIPv4Settings(addresses: [Self.deviceAddress], subnetMasks: ["255.255.255.0"])
         ipv4.includedRoutes = [NEIPv4Route(destinationAddress: Self.targetAddress, subnetMask: "255.255.255.255")]
         settings.ipv4Settings = ipv4

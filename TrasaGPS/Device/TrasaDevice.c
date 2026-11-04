@@ -263,7 +263,7 @@ char *trasa_rp_tunnel(const char *ip, uint16_t port, const uint8_t *pairing, siz
   if (err != NULL) {
     if (handshake) rsd_handshake_free(handshake);
     if (adapter) adapter_free(adapter);
-    return take_error(err, "Tunel cez RemotePairing zlyhal (je zapnutá VPN?)");
+    return take_error(err, "tunel");
   }
 
   TrasaDevice *device = calloc(1, sizeof(TrasaDevice));

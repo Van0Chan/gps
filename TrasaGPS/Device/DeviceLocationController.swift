@@ -210,24 +210,35 @@ final class DeviceLocationController {
             status = .working("Hľadám službu RemotePairing…")
             let manualPort = UInt16(UserDefaults.standard.string(forKey: Self.rpPortKey) ?? "") ?? 0
             let port: UInt16
+            let portSource: String
             if manualPort != 0 {
                 port = manualPort
+                portSource = "zadaný ručne"
+            } else if let found = await RemotePairingDiscovery.findPort() {
+                port = found.port
+                portSource = "Bonjour, rozhranie \(found.interface)"
             } else {
-                port = await RemotePairingDiscovery.findPort() ?? RemotePairingDiscovery.defaultPort
+                port = RemotePairingDiscovery.defaultPort
+                portSource = "Bonjour nič nenašiel – predvolený port"
             }
 
             func openTunnel() async throws -> String {
-                var lastError: Error?
+                var attempts: [String] = []
                 for ip in candidates {
                     await MainActor.run { self.status = .working("Vytváram tunel (\(ip):\(port))…") }
                     do {
                         try await link.rpTunnel(ip: ip, port: port, pairing: pairing)
                         return ip
                     } catch {
-                        lastError = error
+                        attempts.append("• \(ip):\(port) – \(error.localizedDescription)")
                     }
                 }
-                throw lastError ?? DeviceLinkError(message: "Zariadenie sa nenašlo.")
+                let vpn = BuiltInVPN.isEnabledInSettings ? "vstavaná VPN" : "externá VPN (LocalDevVPN)"
+                throw DeviceLinkError(message: """
+                    Tunel cez RemotePairing sa nepodarilo vytvoriť.
+                    Port: \(port) (\(portSource)), \(vpn).
+                    \(attempts.joined(separator: "\n"))
+                    """)
             }
 
             var ip = try await openTunnel()

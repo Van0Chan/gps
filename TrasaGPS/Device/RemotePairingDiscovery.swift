@@ -6,7 +6,12 @@ import Network
 enum RemotePairingDiscovery {
     static let defaultPort: UInt16 = 49152
 
-    static func findPort(timeout: TimeInterval = 5) async -> UInt16? {
+    struct Result {
+        let port: UInt16
+        let interface: String
+    }
+
+    static func findPort(timeout: TimeInterval = 5) async -> Result? {
         await withCheckedContinuation { continuation in
             let search = Search(continuation: continuation)
             search.start(timeout: timeout)
@@ -15,12 +20,13 @@ enum RemotePairingDiscovery {
 
     private final class Search: @unchecked Sendable {
         private let queue = DispatchQueue(label: "sk.trasagps.bonjour")
-        private var continuation: CheckedContinuation<UInt16?, Never>?
+        private var continuation: CheckedContinuation<Result?, Never>?
+        private var interfaceName = "?"
         private var browser: NWBrowser?
         private var connection: NWConnection?
         private var usingLoopback = false
 
-        init(continuation: CheckedContinuation<UInt16?, Never>) {
+        init(continuation: CheckedContinuation<Result?, Never>) {
             self.continuation = continuation
         }
 
@@ -47,6 +53,7 @@ enum RemotePairingDiscovery {
             let loopback = services.first { $0.interfaces.contains { $0.type == .loopback || $0.name.hasPrefix("lo") } }
             guard let chosen = loopback ?? services.first else { return }
             let isLoopback = loopback != nil
+            interfaceName = chosen.interfaces.map(\.name).joined(separator: ",")
             // Ak už riešime loopback, iné rozhrania ignorujeme.
             if connection != nil, usingLoopback || !isLoopback { return }
             usingLoopback = isLoopback
@@ -59,7 +66,7 @@ enum RemotePairingDiscovery {
                 switch state {
                 case .ready, .waiting, .preparing:
                     if case .hostPort(_, let port)? = connection.currentPath?.remoteEndpoint, port.rawValue != 0 {
-                        self.finish(port.rawValue)
+                        self.finish(Result(port: port.rawValue, interface: self.interfaceName.isEmpty ? "?" : self.interfaceName))
                     }
                 case .failed:
                     break
@@ -70,7 +77,7 @@ enum RemotePairingDiscovery {
             connection.start(queue: queue)
         }
 
-        private func finish(_ port: UInt16?) {
+        private func finish(_ port: Result?) {
             guard let continuation else { return }
             self.continuation = nil
             browser?.cancel()

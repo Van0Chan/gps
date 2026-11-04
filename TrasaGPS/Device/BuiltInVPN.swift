@@ -56,7 +56,13 @@ enum BuiltInVPN {
     static func start() async throws {
         let manager = try await manager()
         let connection = manager.connection
-        if connection.status == .connected { return }
+        // Ak VPN beží (napr. zo staršej verzie), reštartujeme ju, aby mala aktuálne nastavenia.
+        if connection.status == .connected || connection.status == .connecting {
+            connection.stopVPNTunnel()
+            for _ in 0..<20 where connection.status != .disconnected {
+                try await Task.sleep(for: .milliseconds(150))
+            }
+        }
         do {
             try connection.startVPNTunnel()
         } catch {
