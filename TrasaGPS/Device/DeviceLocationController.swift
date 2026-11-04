@@ -76,16 +76,36 @@ final class DeviceLocationController {
             throw DeviceLinkError(message: "Súbor je prázdny.")
         }
 
-        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+        guard let root = try? PropertyListSerialization.propertyList(from: data, format: nil) else {
             throw DeviceLinkError(message: "Súbor nie je platný plist. Pairing file musí byť .plist alebo .mobiledevicepairing.")
         }
-        let keys = ["HostCertificate", "DeviceCertificate", "HostPrivateKey", "HostID"]
-        guard keys.contains(where: { plist[$0] != nil }) else {
-            throw DeviceLinkError(message: "Toto nie je pairing file (chýbajú v ňom certifikáty HostCertificate/HostPrivateKey).")
+        let required = ["HostCertificate", "HostPrivateKey", "DeviceCertificate", "RootCertificate"]
+        func isPairing(_ dict: [String: Any]) -> Bool {
+            required.filter { dict[$0] != nil }.count >= 2
         }
 
+        var pairingData = data
+        if let dict = root as? [String: Any], isPairing(dict) {
+            // priamo pairing file
+        } else if let dict = root as? [String: Any],
+                  let nested = dict.values.compactMap({ $0 as? [String: Any] }).first(where: isPairing) {
+            // pairing file vnorený o úroveň nižšie
+            pairingData = try PropertyListSerialization.data(fromPropertyList: nested, format: .xml, options: 0)
+        } else {
+            let keys: String
+            if let dict = root as? [String: Any] {
+                keys = dict.keys.sorted().prefix(12).joined(separator: ", ")
+            } else {
+                keys = "(nie je to slovník, ale \(type(of: root)))"
+            }
+            throw DeviceLinkError(message: """
+                Toto nie je pairing file – chýbajú v ňom certifikáty (HostCertificate, HostPrivateKey, DeviceCertificate).
+
+                Súbor obsahuje položky: \(keys.isEmpty ? "žiadne" : keys)
+                """)
+        }
         try FileManager.default.createDirectory(at: Self.pairingURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: Self.pairingURL, options: [.atomic, .completeFileProtection])
+        try pairingData.write(to: Self.pairingURL, options: [.atomic, .completeFileProtection])
         hasPairingFile = true
         if case .failed = status { status = .idle }
     }
