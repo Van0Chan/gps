@@ -38,6 +38,17 @@ struct DeviceSetupView: View {
                         Task { await device.disconnect() }
                     }
                 } else {
+                    if !device.isOnWiFi {
+                        Label {
+                            Text(device.waitingForWiFi
+                                 ? "Čakám na Wi-Fi – spojenie sa obnoví samo."
+                                 : "Na pripojenie treba Wi-Fi. Po pripojení ju môžeš vypnúť, spojenie vydrží aj na dátach.")
+                        } icon: {
+                            Image(systemName: "wifi.exclamationmark")
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                    }
                     Button {
                         Task { await device.connect() }
                     } label: {
@@ -75,7 +86,7 @@ struct DeviceSetupView: View {
             } header: {
                 Text("Pairing file")
             } footer: {
-                Text("Pairing file (.plist alebo .mobiledevicepairing) môžeš importovať aj zo Súborov: podrž prst na súbore ▸ Zdieľať ▸ TrasaGPS. Pairing file dáva plný prístup k tvojmu iPhonu. Nikomu ho neposielaj. Aplikácia ho ukladá iba lokálne v iPhone.")
+                Text("Pairing file (.plist alebo .mobiledevicepairing) môžeš importovať aj zo Súborov: podrž prst na súbore ▸ Zdieľať ▸ GeoPilot. Pairing file dáva plný prístup k tvojmu iPhonu. Nikomu ho neposielaj. Aplikácia ho ukladá iba lokálne v iPhone.")
             }
 
             Section {
@@ -123,7 +134,7 @@ struct DeviceSetupView: View {
                     step(2, "VPN zapne GeoPilot sama (prepínač **Vstavaná VPN**). Ak by tvoj certifikát VPN nepovoľoval, vypni prepínač a použi aplikáciu LocalDevVPN z App Store.")
                     step(3, "Získaj **pairing file**: RemotePairing súbor (napr. zo StikDebug, kľúče public_key/private_key) alebo klasický pairing file z počítača (iloader, JitterbugPair). Oba typy fungujú.")
                     step(4, "Tu ťukni na **Importovať pairing file** a vyber ho.")
-                    step(5, "Ťukni na **Pripojiť**. Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB).")
+                    step(5, "Na **Wi-Fi** ťukni na **Pripojiť**. Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB). Potom môžeš Wi-Fi vypnúť – spojenie vydrží aj na mobilných dátach.")
                     step(6, "Na mape posuň zameriavač a ťukni na **Presunúť iPhone sem**, alebo spusti simuláciu trasy.")
                 }
                 .font(.footnote)

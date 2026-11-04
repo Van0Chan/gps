@@ -273,6 +273,11 @@ struct LiveMapView: View {
                 Spacer()
             }
         } else if device.hasPairingFile {
+            if device.waitingForWiFi {
+                Label("Spojenie sa obnoví, keď sa pripojíš na Wi-Fi", systemImage: "wifi.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             Button {
                 Task { await device.connect() }
             } label: {

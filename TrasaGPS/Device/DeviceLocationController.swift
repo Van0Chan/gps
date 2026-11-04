@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import Network
 import Observation
 
 /// Riadi simuláciu polohy celého iPhonu (všetky aplikácie vidia nastavenú polohu).
@@ -22,6 +23,14 @@ final class DeviceLocationController {
     private(set) var activeIP: String?
     /// Posledná poloha poslaná do zariadenia (nil = skutočná poloha).
     private(set) var spoofedCoordinate: CLLocationCoordinate2D?
+    /// Je iPhone práve pripojený na Wi-Fi? (nové spojenie sa dá vytvoriť iba cez Wi-Fi)
+    private(set) var isOnWiFi = true
+    /// Spojenie spadlo a obnoví sa samo, keď bude Wi-Fi.
+    private(set) var waitingForWiFi = false
+
+    @ObservationIgnored private let pathMonitor = NWPathMonitor()
+    /// Používateľ chce byť pripojený (nastaví sa po úspešnom pripojení, zruší pri odpojení).
+    @ObservationIgnored private var wantsConnection = false
 
     @ObservationIgnored private let link = DeviceLink()
     @ObservationIgnored private var inFlight = false
@@ -41,6 +50,34 @@ final class DeviceLocationController {
 
     init() {
         hasPairingFile = FileManager.default.fileExists(atPath: Self.pairingURL.path)
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            let wifi = path.status == .satisfied && (path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet))
+            Task { @MainActor in self?.networkChanged(onWiFi: wifi) }
+        }
+        pathMonitor.start(queue: DispatchQueue(label: "sk.trasagps.path"))
+    }
+
+    private func networkChanged(onWiFi: Bool) {
+        let cameOnline = onWiFi && !isOnWiFi
+        isOnWiFi = onWiFi
+        // Spojenie spadlo a teraz je Wi-Fi → pripojíme sa znova a vrátime polohu.
+        if cameOnline, wantsConnection, !isConnected, !isWorking {
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                await self.connect()
+            }
+        }
+    }
+
+    /// Doplní k chybe radu, ak sa pripájame bez Wi-Fi.
+    private func explain(_ error: Error) -> String {
+        guard !isOnWiFi else { return error.localizedDescription }
+        return """
+            Nie si na Wi-Fi. iOS dovolí vytvoriť nové spojenie iba cez Wi-Fi (stačí aj hotspot iného telefónu). \
+            Pripoj sa na Wi-Fi, ťukni Pripojiť a potom môžeš Wi-Fi vypnúť – spojenie vydrží aj na dátach.
+
+            Podrobnosti: \(error.localizedDescription)
+            """
     }
 
     // MARK: Pairing file
@@ -190,16 +227,24 @@ final class DeviceLocationController {
 
             status = .working("Pripájam službu simulácie polohy…")
             try await link.connect(ip: found.ip, pairing: pairing)
-            status = .connected
-            startKeepAlive()
-            if let c = spoofedCoordinate { push(c, force: true) }
+            didConnect()
         } catch {
             await failConnect(error)
         }
     }
 
+    private func didConnect() {
+        status = .connected
+        wantsConnection = true
+        waitingForWiFi = false
+        startKeepAlive()
+        // Po obnovení spojenia vrátime naposledy nastavenú polohu.
+        if let c = spoofedCoordinate { push(c, force: true) }
+    }
+
     private func failConnect(_ error: Error) async {
-        status = .failed(error.localizedDescription)
+        status = .failed(explain(error))
+        waitingForWiFi = wantsConnection && !isOnWiFi
         await link.disconnect()
         stopKeepAlive()
         if BuiltInVPN.isEnabledInSettings { await BuiltInVPN.stop() }
@@ -258,15 +303,15 @@ final class DeviceLocationController {
 
             status = .working("Pripájam službu simulácie polohy…")
             try await link.rpStartLocation()
-            status = .connected
-            startKeepAlive()
-            if let c = spoofedCoordinate { push(c, force: true) }
+            didConnect()
         } catch {
             await failConnect(error)
         }
     }
 
     func disconnect() async {
+        wantsConnection = false
+        waitingForWiFi = false
         stopKeepAlive()
         if isConnected { try? await link.clearLocation() }
         await link.disconnect()
@@ -323,9 +368,20 @@ final class DeviceLocationController {
     }
 
     private func fail(_ error: Error) {
-        status = .failed("Spojenie sa prerušilo: \(error.localizedDescription)")
         stopKeepAlive()
         Task { await link.disconnect() }
+        if isOnWiFi, wantsConnection {
+            // Na Wi-Fi sa skúsime hneď pripojiť znova.
+            status = .failed("Spojenie sa prerušilo, pripájam znova…")
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                await self.connect()
+            }
+        } else {
+            waitingForWiFi = wantsConnection
+            status = .failed("Spojenie sa prerušilo: \(error.localizedDescription)" +
+                             (wantsConnection ? "\nObnoví sa samo, keď sa pripojíš na Wi-Fi." : ""))
+        }
     }
 
     /// Spojenie udržiavame živé opakovaným posielaním polohy
