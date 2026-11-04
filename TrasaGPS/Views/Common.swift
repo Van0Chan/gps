@@ -139,3 +139,24 @@ struct TabBarMinimizeOnScroll: ViewModifier {
         }
     }
 }
+
+/// Panel plávajúci nad mapou. Mapa ostáva na celú obrazovku (pri zmene výšky panelu
+/// neposkočí ani nepreblikne), len jej ovládacie prvky sa posunú nad panel.
+struct FloatingPanel<Panel: View>: ViewModifier {
+    let panel: Panel
+    @State private var height: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaPadding(.bottom, height)
+            .overlay(alignment: .bottom) {
+                panel.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            }
+    }
+}
+
+extension View {
+    func floatingPanel<P: View>(@ViewBuilder _ panel: () -> P) -> some View {
+        modifier(FloatingPanel(panel: panel()))
+    }
+}

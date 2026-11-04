@@ -70,7 +70,7 @@ struct PlannerView: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .bottom) { panel.panelStyle() }
+            .floatingPanel { panel.panelStyle() }
             .navigationTitle("Plánovač trasy")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Hľadať miesto alebo adresu")

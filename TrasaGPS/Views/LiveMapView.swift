@@ -74,7 +74,7 @@ struct LiveMapView: View {
             }
         }
         .overlay(alignment: .top) { topBar }
-        .safeAreaInset(edge: .bottom) { bottomPanel }
+        .floatingPanel { bottomPanel }
         .onAppear { location.requestPermission() }
         .sensoryFeedback(.impact(weight: .medium), trigger: location.isRecording)
         .sensoryFeedback(.success, trigger: device.spoofedCoordinate?.latitude) { _, new in new != nil }
@@ -159,6 +159,7 @@ struct LiveMapView: View {
     private var livePanel: some View {
         VStack(spacing: 12) {
             if showDetails {
+                VStack(spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Aktuálna poloha").font(.caption2).foregroundStyle(.secondary)
@@ -186,6 +187,8 @@ struct LiveMapView: View {
                     StatTile(title: "Presnosť", value: location.lastLocation.map { String(format: "±%.0f m", $0.horizontalAccuracy) } ?? "–", systemImage: "scope")
                     StatTile(title: "Smer", value: location.heading.map { String(format: "%.0f°", $0) } ?? "–", systemImage: "safari")
                 }
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             devicePanel
@@ -228,7 +231,7 @@ struct LiveMapView: View {
                     .disabled(!location.isAuthorized)
 
                     Button {
-                        withAnimation { showDetails.toggle() }
+                        withAnimation(.snappy(duration: 0.3)) { showDetails.toggle() }
                     } label: {
                         Image(systemName: showDetails ? "chevron.down" : "chevron.up")
                     }
