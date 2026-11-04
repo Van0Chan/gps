@@ -5,7 +5,7 @@ set -euo pipefail
 
 IDEVICE_REPO="https://github.com/jkcoxson/idevice"
 IDEVICE_REV="89702099f4d7552f704f93b4526756abda319ceb"
-FEATURES="ring,tcp,tunnel_tcp_stack,dvt,location_simulation,mobile_image_mounter,tss"
+FEATURES="ring,tcp,tunnel_tcp_stack,dvt,location_simulation,mobile_image_mounter,tss,cryptexd"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/.build/idevice"

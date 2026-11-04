@@ -50,6 +50,17 @@ final class DeviceLocationController {
         return base.appendingPathComponent("pairing.plist")
     }
 
+    enum PairingKind { case lockdown, remotePairing }
+
+    static func pairingKind(of data: Data) -> PairingKind? {
+        guard let dict = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return nil }
+        if dict["public_key"] != nil, dict["private_key"] != nil, dict["identifier"] != nil { return .remotePairing }
+        if dict["HostCertificate"] != nil || dict["HostPrivateKey"] != nil { return .lockdown }
+        return nil
+    }
+
+    static let rpPortKey = "deviceRemotePairingPort"
+
     /// Je súbor pravdepodobne pairing file? (podľa prípony)
     static func looksLikePairingFile(_ url: URL) -> Bool {
         ["plist", "mobiledevicepairing"].contains(url.pathExtension.lowercased())
@@ -85,7 +96,9 @@ final class DeviceLocationController {
         }
 
         var pairingData = data
-        if let dict = root as? [String: Any], isPairing(dict) {
+        if let dict = root as? [String: Any], dict["public_key"] != nil, dict["private_key"] != nil, dict["identifier"] != nil {
+            // RemotePairing pairing file (iOS 17+, napr. zo StikDebug)
+        } else if let dict = root as? [String: Any], isPairing(dict) {
             // priamo pairing file
         } else if let dict = root as? [String: Any],
                   let nested = dict.values.compactMap({ $0 as? [String: Any] }).first(where: isPairing) {
@@ -126,6 +139,13 @@ final class DeviceLocationController {
         }
 
         let setting = UserDefaults.standard.string(forKey: Self.ipKey) ?? Self.automaticIP
+
+        if Self.pairingKind(of: pairing) == .remotePairing {
+            let candidates = setting == Self.automaticIP ? ["10.7.0.1", "10.7.0.2"] : [setting]
+            await connectRemotePairing(pairing: pairing, candidates: candidates)
+            return
+        }
+
         let candidates = setting == Self.automaticIP ? ["10.7.0.2", "10.7.0.1"] : [setting]
 
         do {
@@ -158,6 +178,58 @@ final class DeviceLocationController {
 
             status = .working("Pripájam službu simulácie polohy…")
             try await link.connect(ip: found.ip, pairing: pairing)
+            status = .connected
+            startKeepAlive()
+            if let c = spoofedCoordinate { push(c, force: true) }
+        } catch {
+            status = .failed(error.localizedDescription)
+            await link.disconnect()
+            stopKeepAlive()
+        }
+    }
+
+    private func connectRemotePairing(pairing: Data, candidates: [String]) async {
+        do {
+            status = .working("Hľadám službu RemotePairing…")
+            let manualPort = UInt16(UserDefaults.standard.string(forKey: Self.rpPortKey) ?? "") ?? 0
+            let port: UInt16
+            if manualPort != 0 {
+                port = manualPort
+            } else {
+                port = await RemotePairingDiscovery.findPort() ?? RemotePairingDiscovery.defaultPort
+            }
+
+            func openTunnel() async throws -> String {
+                var lastError: Error?
+                for ip in candidates {
+                    await MainActor.run { self.status = .working("Vytváram tunel (\(ip):\(port))…") }
+                    do {
+                        try await link.rpTunnel(ip: ip, port: port, pairing: pairing)
+                        return ip
+                    } catch {
+                        lastError = error
+                    }
+                }
+                throw lastError ?? DeviceLinkError(message: "Zariadenie sa nenašlo.")
+            }
+
+            var ip = try await openTunnel()
+            activeIP = "\(ip):\(port)"
+
+            status = .working("Kontrolujem Developer Disk Image…")
+            let mounted = try await link.rpDDIMounted()
+            if !mounted {
+                let dir = try await DDIStore.loadCryptex { [weak self] text in self?.status = .working(text) }
+                status = .working("Inštalujem Developer Disk Image…")
+                try await link.rpInstallDDI(directory: dir)
+                // Po pripojení DDI pribudnú nové služby – tunel otvoríme nanovo.
+                status = .working("Obnovujem tunel…")
+                ip = try await openTunnel()
+                activeIP = "\(ip):\(port)"
+            }
+
+            status = .working("Pripájam službu simulácie polohy…")
+            try await link.rpStartLocation()
             status = .connected
             startKeepAlive()
             if let c = spoofedCoordinate { push(c, force: true) }

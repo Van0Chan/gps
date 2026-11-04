@@ -119,6 +119,43 @@ final class DeviceLink: @unchecked Sendable {
         }
     }
 
+    // MARK: RemotePairing
+
+    /// Vytvorí tunel cez RemotePairing a nastaví ho ako aktuálne zariadenie.
+    func rpTunnel(ip: String, port: UInt16, pairing: Data) async throws {
+        try await worker.perform {
+            if let old = self.device {
+                trasa_free(old)
+                self.device = nil
+            }
+            var handle: OpaquePointer?
+            try pairing.withUnsafeBytes { raw in
+                try Self.check(trasa_rp_tunnel(ip, port, raw.bindMemory(to: UInt8.self).baseAddress, raw.count, &handle))
+            }
+            self.device = handle
+        }
+    }
+
+    func rpDDIMounted() async throws -> Bool {
+        try await worker.perform {
+            var mounted: Int32 = 0
+            try Self.check(trasa_rp_ddi_mounted(self.device, &mounted))
+            return mounted != 0
+        }
+    }
+
+    func rpInstallDDI(directory: URL) async throws {
+        try await worker.perform {
+            try Self.check(trasa_rp_install_ddi(self.device, directory.path))
+        }
+    }
+
+    func rpStartLocation() async throws {
+        try await worker.perform {
+            try Self.check(trasa_rp_start_location(self.device))
+        }
+    }
+
     func setLocation(latitude: Double, longitude: Double) async throws {
         try await worker.perform {
             try Self.check(trasa_set_location(self.device, latitude, longitude))

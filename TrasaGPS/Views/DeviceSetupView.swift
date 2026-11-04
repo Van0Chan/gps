@@ -7,6 +7,7 @@ struct DeviceSetupView: View {
     @Environment(DeviceLocationController.self) private var device
     @AppStorage(DeviceLocationController.ipKey) private var ipSetting = DeviceLocationController.automaticIP
     @AppStorage(DeviceLocationController.followKey) private var follow = true
+    @AppStorage(DeviceLocationController.rpPortKey) private var rpPort = ""
 
     @State private var showImporter = false
     @State private var importError: String?
@@ -89,8 +90,14 @@ struct DeviceSetupView: View {
                     }
                     .disabled(customIP.isEmpty)
                 }
-                LabeledContent("Developer Disk Image", value: DDIStore.isDownloaded ? "Stiahnutý" : "Stiahne sa pri pripojení")
-                if DDIStore.isDownloaded {
+                HStack {
+                    Text("Port RemotePairing")
+                    TextField("automaticky", text: $rpPort)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Developer Disk Image", value: DDIStore.anyDownloaded ? "Stiahnutý" : "Stiahne sa pri pripojení")
+                if DDIStore.anyDownloaded {
                     Button("Zmazať stiahnutý DDI (~16 MB)") { DDIStore.delete() }
                 }
             }
@@ -99,7 +106,7 @@ struct DeviceSetupView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     step(1, "Zapni **Režim pre vývojárov**: Nastavenia ▸ Súkromie a bezpečnosť ▸ Režim pre vývojárov (iPhone sa reštartuje).")
                     step(2, "Z App Store nainštaluj **LocalDevVPN** a zapni v nej VPN. Tá umožní aplikácii pripojiť sa k vývojárskym službám vlastného iPhonu.")
-                    step(3, "Na počítači vytvor **pairing file** pre svoj iPhone (napr. nástrojom iloader, JitterbugPair alebo `idevice pair`) a pošli si ho do iPhonu (AirDrop, Súbory, e-mail).")
+                    step(3, "Získaj **pairing file**: RemotePairing súbor (napr. zo StikDebug, kľúče public_key/private_key) alebo klasický pairing file z počítača (iloader, JitterbugPair). Oba typy fungujú.")
                     step(4, "Tu ťukni na **Importovať pairing file** a vyber ho.")
                     step(5, "Ťukni na **Pripojiť**. Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB).")
                     step(6, "Na mape posuň zameriavač a ťukni na **Presunúť iPhone sem**, alebo spusti simuláciu trasy.")

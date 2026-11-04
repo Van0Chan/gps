@@ -27,6 +27,19 @@ char *trasa_set_location(TrasaDevice *device, double latitude, double longitude)
 char *trasa_clear_location(TrasaDevice *device);
 void trasa_free(TrasaDevice *device);
 
+// --- RemotePairing (pairing file s kľúčmi public_key/private_key/identifier) ---
+
+/// Vytvorí tunel cez RemotePairing (ip:port služby _remotepairing._tcp).
+/// Výsledné zariadenie ešte nemá spustenú simuláciu polohy.
+char *trasa_rp_tunnel(const char *ip, uint16_t port, const uint8_t *pairing, size_t pairing_len,
+                      TrasaDevice **out);
+/// Zistí, či je pripojený Developer Disk Image (cryptex alebo image mounter).
+char *trasa_rp_ddi_mounted(TrasaDevice *device, int *mounted);
+/// Nainštaluje DDI ako cryptex zo zložky so súbormi Xcode_iOS_DDI_Cryptex.
+char *trasa_rp_install_ddi(TrasaDevice *device, const char *cryptex_dir);
+/// Spustí službu simulácie polohy na existujúcom tuneli.
+char *trasa_rp_start_location(TrasaDevice *device);
+
 void trasa_string_free(char *string);
 
 #endif

@@ -12,6 +12,7 @@
 
 struct TrasaDevice {
   AdapterHandle *adapter;
+  RsdHandshakeHandle *handshake;
   RemoteServerHandle *server;
   LocationSimulationHandle *location;
 };
@@ -216,20 +217,127 @@ char *trasa_connect(const char *ip, const uint8_t *pairing, size_t pairing_len, 
 }
 
 char *trasa_set_location(TrasaDevice *device, double latitude, double longitude) {
-  if (device == NULL) return dup_string("Zariadenie nie je pripojené");
+  if (device == NULL || device->location == NULL) return dup_string("Zariadenie nie je pripojené");
   return take_error(location_simulation_set(device->location, latitude, longitude),
                     "Nastavenie polohy");
 }
 
 char *trasa_clear_location(TrasaDevice *device) {
-  if (device == NULL) return dup_string("Zariadenie nie je pripojené");
+  if (device == NULL || device->location == NULL) return dup_string("Zariadenie nie je pripojené");
   return take_error(location_simulation_clear(device->location), "Obnovenie polohy");
 }
 
 void trasa_free(TrasaDevice *device) {
   if (device == NULL) return;
-  location_simulation_free(device->location);
-  remote_server_free(device->server);
-  adapter_free(device->adapter);
+  if (device->location) location_simulation_free(device->location);
+  if (device->server) remote_server_free(device->server);
+  if (device->handshake) rsd_handshake_free(device->handshake);
+  if (device->adapter) adapter_free(device->adapter);
   free(device);
+}
+
+// ---------------------------------------------------------------------------
+// RemotePairing
+// ---------------------------------------------------------------------------
+
+char *trasa_rp_tunnel(const char *ip, uint16_t port, const uint8_t *pairing, size_t pairing_len,
+                      TrasaDevice **out) {
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_len = sizeof(addr);
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  if (inet_pton(AF_INET, ip, &addr.sin_addr) != 1) {
+    return dup_string("Neplatná IP adresa zariadenia");
+  }
+
+  RpPairingFileHandle *pairing_file = NULL;
+  IdeviceFfiError *err = rp_pairing_file_from_bytes(pairing, pairing_len, &pairing_file);
+  if (err != NULL) return take_error(err, "Pairing file sa nedá načítať");
+
+  AdapterHandle *adapter = NULL;
+  RsdHandshakeHandle *handshake = NULL;
+  err = tunnel_create_rppairing((const struct sockaddr *)&addr, sizeof(addr), "TrasaGPS",
+                                pairing_file, NULL, NULL, &adapter, &handshake);
+  rp_pairing_file_free(pairing_file);
+  if (err != NULL) {
+    if (handshake) rsd_handshake_free(handshake);
+    if (adapter) adapter_free(adapter);
+    return take_error(err, "Tunel cez RemotePairing zlyhal (je zapnutá LocalDevVPN?)");
+  }
+
+  TrasaDevice *device = calloc(1, sizeof(TrasaDevice));
+  if (device == NULL) {
+    rsd_handshake_free(handshake);
+    adapter_free(adapter);
+    return dup_string("Nedostatok pamäte");
+  }
+  device->adapter = adapter;
+  device->handshake = handshake;
+  *out = device;
+  return NULL;
+}
+
+char *trasa_rp_ddi_mounted(TrasaDevice *device, int *mounted) {
+  if (device == NULL || device->adapter == NULL) return dup_string("Tunel nie je vytvorený");
+  *mounted = 0;
+
+  InstalledCryptexC *installed = NULL;
+  IdeviceFfiError *err = cryptexd_installed_ddi(device->adapter, device->handshake, &installed);
+  if (err == NULL && installed != NULL) {
+    cryptexd_free_installed_cryptex(installed);
+    *mounted = 1;
+    return NULL;
+  }
+  if (err != NULL) idevice_error_free(err);
+
+  ImageMounterHandle *mounter = NULL;
+  err = image_mounter_connect_rsd(device->adapter, device->handshake, &mounter);
+  if (err != NULL) {
+    idevice_error_free(err);
+    return NULL;  // nevieme zistiť -> skúsime inštaláciu
+  }
+  plist_t *devices = NULL;
+  size_t devices_len = 0;
+  err = image_mounter_copy_devices(mounter, &devices, &devices_len);
+  image_mounter_free(mounter);
+  if (err != NULL) {
+    idevice_error_free(err);
+    return NULL;
+  }
+  idevice_plist_array_free(devices, devices_len);
+  *mounted = devices_len > 0 ? 1 : 0;
+  return NULL;
+}
+
+char *trasa_rp_install_ddi(TrasaDevice *device, const char *cryptex_dir) {
+  if (device == NULL || device->adapter == NULL) return dup_string("Tunel nie je vytvorený");
+
+  Cryptex1AssetsHandle *assets = NULL;
+  IdeviceFfiError *err = cryptex1_assets_load(cryptex_dir, &assets);
+  if (err != NULL) return take_error(err, "Súbory Developer Disk Image sa nedajú načítať");
+
+  err = cryptexd_install_ddi(device->adapter, device->handshake, assets, NULL);
+  cryptex1_assets_free(assets);
+  return take_error(err, "Inštalácia Developer Disk Image zlyhala");
+}
+
+char *trasa_rp_start_location(TrasaDevice *device) {
+  if (device == NULL || device->adapter == NULL) return dup_string("Tunel nie je vytvorený");
+
+  RemoteServerHandle *server = NULL;
+  IdeviceFfiError *err = remote_server_connect_rsd(device->adapter, device->handshake, &server);
+  if (err != NULL) {
+    return take_error(err, "Vývojárske služby (DVT) – je pripojený Developer Disk Image?");
+  }
+
+  LocationSimulationHandle *location = NULL;
+  err = location_simulation_new(server, &location);
+  if (err != NULL) {
+    remote_server_free(server);
+    return take_error(err, "Služba simulácie polohy");
+  }
+  device->server = server;
+  device->location = location;
+  return NULL;
 }
