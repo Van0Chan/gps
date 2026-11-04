@@ -8,9 +8,14 @@ on:
 permissions:
   contents: write
 
+# Nový push zruší starší build, ktorý ešte čaká alebo beží.
+concurrency:
+  group: build-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 60
     env:
       VERSION: 1.0.${{ github.run_number }}
@@ -21,6 +26,13 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+
+      - name: Check Xcode (Liquid Glass needs iOS 26+ SDK)
+        run: |
+          xcodebuild -version
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK: $SDK"
+          [ "${SDK%%.*}" -ge 26 ] || { echo "Potrebný je iOS 26+ SDK"; exit 1; }
 
       - name: Cache Rust build
         uses: actions/cache@v4
