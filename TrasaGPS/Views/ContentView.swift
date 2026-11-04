@@ -5,6 +5,8 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var context
     @State private var openError: String?
+    @State private var openMessage: String?
+    @Environment(DeviceLocationController.self) private var device
 
     var body: some View {
         @Bindable var appState = appState
@@ -25,11 +27,22 @@ struct ContentView: View {
         // Otvorenie .gpx súboru z aplikácie Súbory / zdieľania
         .onOpenURL { url in
             do {
-                _ = try GPXImporter.importFile(at: url, into: context)
-                appState.selectedTab = .routes
+                if DeviceLocationController.looksLikePairingFile(url) {
+                    try device.importPairingFile(from: url)
+                    appState.selectedTab = .settings
+                    openMessage = "Pairing file importovaný. V Nastaveniach ▸ Poloha celého iPhonu ťukni na Pripojiť."
+                } else {
+                    _ = try GPXImporter.importFile(at: url, into: context)
+                    appState.selectedTab = .routes
+                }
             } catch {
                 openError = error.localizedDescription
             }
+        }
+        .alert("Hotovo", isPresented: Binding(get: { openMessage != nil }, set: { if !$0 { openMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(openMessage ?? "")
         }
         .alert("Import zlyhal", isPresented: Binding(get: { openError != nil }, set: { if !$0 { openError = nil } })) {
             Button("OK", role: .cancel) {}

@@ -50,18 +50,44 @@ final class DeviceLocationController {
         return base.appendingPathComponent("pairing.plist")
     }
 
+    /// Je súbor pravdepodobne pairing file? (podľa prípony)
+    static func looksLikePairingFile(_ url: URL) -> Bool {
+        ["plist", "mobiledevicepairing"].contains(url.pathExtension.lowercased())
+    }
+
     func importPairingFile(from url: URL) throws {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let data = try Data(contentsOf: url)
-        // Rýchla kontrola, že ide o pairing file (plist s certifikátmi).
-        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-              plist["HostCertificate"] != nil || plist["DeviceCertificate"] != nil else {
-            throw DeviceLinkError(message: "Súbor nevyzerá ako pairing file (chýba HostCertificate).")
+
+        // Súbor môže byť v iCloude a ešte nestiahnutý – NSFileCoordinator ho stiahne.
+        var data: Data?
+        var readError: Error?
+        var coordinatorError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { readURL in
+            do { data = try Data(contentsOf: readURL) } catch { readError = error }
         }
+        if let error = coordinatorError {
+            throw DeviceLinkError(message: "Súbor sa nedá prečítať: \(error.localizedDescription)")
+        }
+        if let error = readError {
+            throw DeviceLinkError(message: "Súbor sa nedá prečítať: \(error.localizedDescription)")
+        }
+        guard let data, !data.isEmpty else {
+            throw DeviceLinkError(message: "Súbor je prázdny.")
+        }
+
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+            throw DeviceLinkError(message: "Súbor nie je platný plist. Pairing file musí byť .plist alebo .mobiledevicepairing.")
+        }
+        let keys = ["HostCertificate", "DeviceCertificate", "HostPrivateKey", "HostID"]
+        guard keys.contains(where: { plist[$0] != nil }) else {
+            throw DeviceLinkError(message: "Toto nie je pairing file (chýbajú v ňom certifikáty HostCertificate/HostPrivateKey).")
+        }
+
         try FileManager.default.createDirectory(at: Self.pairingURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: Self.pairingURL, options: [.atomic, .completeFileProtection])
         hasPairingFile = true
+        if case .failed = status { status = .idle }
     }
 
     func deletePairingFile() {

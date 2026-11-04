@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 /// Nastavenie simulácie polohy celého iPhonu.
 struct DeviceSetupView: View {
@@ -9,6 +10,7 @@ struct DeviceSetupView: View {
 
     @State private var showImporter = false
     @State private var importError: String?
+    @State private var importSuccess = false
     @State private var customIP = ""
     @State private var confirmDelete = false
 
@@ -65,7 +67,7 @@ struct DeviceSetupView: View {
             } header: {
                 Text("Pairing file")
             } footer: {
-                Text("Pairing file dáva plný prístup k tvojmu iPhonu. Nikomu ho neposielaj. Aplikácia ho ukladá iba lokálne v iPhone.")
+                Text("Pairing file (.plist alebo .mobiledevicepairing) môžeš importovať aj zo Súborov: podrž prst na súbore ▸ Zdieľať ▸ TrasaGPS. Pairing file dáva plný prístup k tvojmu iPhonu. Nikomu ho neposielaj. Aplikácia ho ukladá iba lokálne v iPhone.")
             }
 
             Section("Pripojenie") {
@@ -112,14 +114,26 @@ struct DeviceSetupView: View {
             }
         }
         .navigationTitle("Poloha celého iPhonu")
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.propertyList, .xml, .data, .item]) { result in
-            switch result {
-            case .success(let url):
-                do { try device.importPairingFile(from: url) }
-                catch { importError = error.localizedDescription }
-            case .failure(let error):
-                importError = error.localizedDescription
-            }
+        .sheet(isPresented: $showImporter) {
+            DocumentPicker(onPick: { url in
+                showImporter = false
+                let result = Result { try device.importPairingFile(from: url) }
+                // Upozornenie zobrazíme až po zatvorení výberu súboru.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    switch result {
+                    case .success: importSuccess = true
+                    case .failure(let error): importError = error.localizedDescription
+                    }
+                }
+            }, onCancel: {
+                showImporter = false
+            })
+            .ignoresSafeArea()
+        }
+        .alert("Pairing file importovaný", isPresented: $importSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Teraz zapni LocalDevVPN a ťukni na Pripojiť.")
         }
         .alert("Import zlyhal", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -162,6 +176,42 @@ struct DeviceSetupView: View {
                 .bold()
                 .frame(width: 18, alignment: .leading)
             Text(text)
+        }
+    }
+}
+
+/// Výber súboru cez systémový UIDocumentPicker (funguje spoľahlivo pre ľubovoľný typ súboru).
+struct DocumentPicker: UIViewControllerRepresentable {
+    let onPick: (URL) -> Void
+    var onCancel: () -> Void = {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick, onCancel: onCancel) }
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let types: [UTType] = [.propertyList, .xml, .data, .item]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
+        picker.allowsMultipleSelection = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        let onCancel: () -> Void
+        init(onPick: @escaping (URL) -> Void, onCancel: @escaping () -> Void) {
+            self.onPick = onPick
+            self.onCancel = onCancel
+        }
+
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            onCancel()
+        }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            onPick(url)
         }
     }
 }
