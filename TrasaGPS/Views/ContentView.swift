@@ -24,6 +24,7 @@ struct ContentView: View {
                 .tabItem { Label("Nastavenia", systemImage: "gearshape") }
                 .tag(AppState.Tab.settings)
         }
+        .modifier(TabBarMinimizeOnScroll())
         // Otvorenie .gpx súboru z aplikácie Súbory / zdieľania
         .onOpenURL { url in
             do {

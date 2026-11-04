@@ -10,12 +10,17 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       VERSION: 1.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select latest Xcode (iOS 26+ SDK pre Liquid Glass)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Cache Rust build
         uses: actions/cache@v4
@@ -61,9 +66,18 @@ jobs:
           cp -R Payload/TrasaGPS.app unsigned/Payload/
           codesign --remove-signature unsigned/Payload/TrasaGPS.app/TrasaGPS || true
           rm -rf unsigned/Payload/TrasaGPS.app/_CodeSignature
+          for appex in unsigned/Payload/TrasaGPS.app/PlugIns/*.appex; do
+            codesign --remove-signature "$appex/$(basename "$appex" .appex)" || true
+            rm -rf "$appex/_CodeSignature"
+          done
           (cd unsigned && zip -qr ../TrasaGPS-unsigned.ipa Payload)
           # Ad-hoc podpis: TrollStore ho prijme priamo, Sideloadly/AltStore/ESign ho prepíšu vlastným.
-          codesign --force --sign - --timestamp=none --generate-entitlement-der Payload/TrasaGPS.app
+          for appex in Payload/TrasaGPS.app/PlugIns/*.appex; do
+            codesign --force --sign - --timestamp=none --generate-entitlement-der \
+              --entitlements TrasaGPSTunnel/TrasaGPSTunnel.entitlements "$appex"
+          done
+          codesign --force --sign - --timestamp=none --generate-entitlement-der \
+            --entitlements TrasaGPS/Resources/TrasaGPS.entitlements Payload/TrasaGPS.app
           zip -qr TrasaGPS.ipa Payload
           ls -lh TrasaGPS.ipa
 
@@ -77,6 +91,9 @@ jobs:
           lipo -info Payload/TrasaGPS.app/TrasaGPS
           echo "== Minimálna verzia iOS =="
           otool -l Payload/TrasaGPS.app/TrasaGPS | grep -A4 LC_BUILD_VERSION
+          echo "== Rozšírenia =="
+          ls Payload/TrasaGPS.app/PlugIns
+          codesign -d --entitlements - Payload/TrasaGPS.app/PlugIns/*.appex 2>&1 | tail -8
           echo "== Podpis =="
           codesign -dv Payload/TrasaGPS.app 2>&1
           codesign --verify --verbose Payload/TrasaGPS.app

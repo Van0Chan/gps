@@ -8,6 +8,7 @@ struct DeviceSetupView: View {
     @AppStorage(DeviceLocationController.ipKey) private var ipSetting = DeviceLocationController.automaticIP
     @AppStorage(DeviceLocationController.followKey) private var follow = true
     @AppStorage(DeviceLocationController.rpPortKey) private var rpPort = ""
+    @AppStorage(BuiltInVPN.settingKey) private var builtInVPN = true
 
     @State private var showImporter = false
     @State private var importError: String?
@@ -71,6 +72,14 @@ struct DeviceSetupView: View {
                 Text("Pairing file (.plist alebo .mobiledevicepairing) môžeš importovať aj zo Súborov: podrž prst na súbore ▸ Zdieľať ▸ TrasaGPS. Pairing file dáva plný prístup k tvojmu iPhonu. Nikomu ho neposielaj. Aplikácia ho ukladá iba lokálne v iPhone.")
             }
 
+            Section {
+                Toggle("Vstavaná VPN", isOn: $builtInVPN)
+            } footer: {
+                Text(builtInVPN
+                     ? "TrasaGPS si zapne vlastnú lokálnu VPN – LocalDevVPN netreba. Pri prvom spustení iOS požiada o povolenie VPN konfigurácie. Žiadne dáta neopúšťajú iPhone."
+                     : "Používa sa externá aplikácia LocalDevVPN – musí byť zapnutá.")
+            }
+
             Section("Pripojenie") {
                 Picker("Adresa zariadenia", selection: $ipSetting) {
                     Text("Automaticky").tag(DeviceLocationController.automaticIP)
@@ -105,7 +114,7 @@ struct DeviceSetupView: View {
             Section("Návod") {
                 VStack(alignment: .leading, spacing: 10) {
                     step(1, "Zapni **Režim pre vývojárov**: Nastavenia ▸ Súkromie a bezpečnosť ▸ Režim pre vývojárov (iPhone sa reštartuje).")
-                    step(2, "Z App Store nainštaluj **LocalDevVPN** a zapni v nej VPN. Tá umožní aplikácii pripojiť sa k vývojárskym službám vlastného iPhonu.")
+                    step(2, "VPN zapne TrasaGPS sama (prepínač **Vstavaná VPN**). Ak by tvoj certifikát VPN nepovoľoval, vypni prepínač a použi aplikáciu LocalDevVPN z App Store.")
                     step(3, "Získaj **pairing file**: RemotePairing súbor (napr. zo StikDebug, kľúče public_key/private_key) alebo klasický pairing file z počítača (iloader, JitterbugPair). Oba typy fungujú.")
                     step(4, "Tu ťukni na **Importovať pairing file** a vyber ho.")
                     step(5, "Ťukni na **Pripojiť**. Pri prvom pripojení po reštarte sa stiahne a pripojí Developer Disk Image (~16 MB).")

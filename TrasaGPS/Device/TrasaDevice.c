@@ -78,7 +78,7 @@ char *trasa_ddi_status(const char *ip, const uint8_t *pairing, size_t pairing_le
   IdeviceFfiError *err = lockdownd_connect(provider, &lockdown);
   if (err != NULL) {
     idevice_provider_free(provider);
-    return take_error(err, "Spojenie so zariadením zlyhalo (je zapnutá LocalDevVPN?)");
+    return take_error(err, "Spojenie so zariadením zlyhalo (je zapnutá VPN?)");
   }
 
   IdevicePairingFile *session_pairing = NULL;
@@ -263,7 +263,7 @@ char *trasa_rp_tunnel(const char *ip, uint16_t port, const uint8_t *pairing, siz
   if (err != NULL) {
     if (handshake) rsd_handshake_free(handshake);
     if (adapter) adapter_free(adapter);
-    return take_error(err, "Tunel cez RemotePairing zlyhal (je zapnutá LocalDevVPN?)");
+    return take_error(err, "Tunel cez RemotePairing zlyhal (je zapnutá VPN?)");
   }
 
   TrasaDevice *device = calloc(1, sizeof(TrasaDevice));

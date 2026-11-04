@@ -109,11 +109,33 @@ struct WaypointMarker: View {
 }
 
 extension View {
+    /// Spodný panel – na iOS 26+ v štýle Liquid Glass.
     func panelStyle() -> some View {
         self
             .padding(14)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .glassBackground(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
+    }
+
+    /// Liquid Glass na iOS 26+, inak systémový materiál.
+    @ViewBuilder
+    func glassBackground<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(.regularMaterial, in: shape)
+        }
+    }
+}
+
+/// Tab bar sa pri posúvaní zmenší (iOS 26+ Liquid Glass).
+struct TabBarMinimizeOnScroll: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
     }
 }

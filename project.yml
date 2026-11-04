@@ -15,6 +15,13 @@ targets:
     scheme: {}
     sources:
       - TrasaGPS
+    dependencies:
+      - target: TrasaGPSTunnel
+    entitlements:
+      path: TrasaGPS/Resources/TrasaGPS.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: sk.trasagps.app
@@ -27,4 +34,20 @@ targets:
         HEADER_SEARCH_PATHS: $(SRCROOT)/Vendor/idevice/include
         LIBRARY_SEARCH_PATHS: $(SRCROOT)/Vendor/idevice/lib
         OTHER_LDFLAGS: -lidevice_ffi -lresolv -framework Security -framework SystemConfiguration
+        SUPPORTED_PLATFORMS: iphoneos
+  TrasaGPSTunnel:
+    type: app-extension
+    platform: iOS
+    sources:
+      - TrasaGPSTunnel
+    entitlements:
+      path: TrasaGPSTunnel/TrasaGPSTunnel.entitlements
+      properties:
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sk.trasagps.app.tunnel
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: TrasaGPSTunnel/Info.plist
         SUPPORTED_PLATFORMS: iphoneos

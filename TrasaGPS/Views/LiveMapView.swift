@@ -106,7 +106,7 @@ struct LiveMapView: View {
                     .controlSize(.small)
                 }
                 .padding(12)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .glassBackground(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
 
             HStack {
@@ -118,7 +118,7 @@ struct LiveMapView: View {
                     Image(systemName: "square.3.layers.3d")
                         .font(.title3)
                         .padding(10)
-                        .background(.regularMaterial, in: Circle())
+                        .glassBackground(in: Circle())
                 }
                 Spacer()
                 if device.spoofedCoordinate != nil {

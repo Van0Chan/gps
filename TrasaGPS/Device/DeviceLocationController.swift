@@ -140,13 +140,25 @@ final class DeviceLocationController {
 
         let setting = UserDefaults.standard.string(forKey: Self.ipKey) ?? Self.automaticIP
 
+        if BuiltInVPN.isEnabledInSettings {
+            status = .working("Zapínam vstavanú VPN…")
+            do {
+                try await BuiltInVPN.start()
+            } catch {
+                status = .failed(error.localizedDescription)
+                return
+            }
+        }
+
         if Self.pairingKind(of: pairing) == .remotePairing {
             let candidates = setting == Self.automaticIP ? ["10.7.0.1", "10.7.0.2"] : [setting]
             await connectRemotePairing(pairing: pairing, candidates: candidates)
             return
         }
 
-        let candidates = setting == Self.automaticIP ? ["10.7.0.2", "10.7.0.1"] : [setting]
+        let candidates = setting == Self.automaticIP
+            ? (BuiltInVPN.isEnabledInSettings ? ["10.7.0.1", "10.7.0.2"] : ["10.7.0.2", "10.7.0.1"])
+            : [setting]
 
         do {
             status = .working("Hľadám zariadenie cez LocalDevVPN…")
@@ -246,6 +258,7 @@ final class DeviceLocationController {
         await link.disconnect()
         spoofedCoordinate = nil
         status = .idle
+        if BuiltInVPN.isEnabledInSettings { await BuiltInVPN.stop() }
     }
 
     // MARK: Poloha
